@@ -1,24 +1,46 @@
 #card-to-print {
-  width: fit-content;
+  width: 1000px;
+  /* Fix width for consistent rendering */
   max-width: 100%;
+  margin: 0 auto;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
 }
 
-#card-to-print table,
+#card-to-print table {
+  width: 100%;
+  border-collapse: collapse;
+  page-break-inside: avoid !important;
+}
+
 #card-to-print tr,
 #card-to-print td,
 #card-to-print th {
   page-break-inside: avoid !important;
   break-inside: avoid !important;
+  white-space: nowrap;
 }
 
 @media print {
-  #card-to-print {
-    zoom: 85%;
-    page-break-inside: avoid;
-  }
-
   body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  #card-to-print {
+    zoom: 1 !important;
+    /* Avoid scaling on print */
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  tr,
+  td,
+  th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }

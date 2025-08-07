@@ -27,8 +27,10 @@ const ClassCard = ({
       const { data, error } = await supabase
         .from('schooldata')
         .select('schoollogo')
-        .eq('name', schoolName)
+        .eq('id', schoolId)
         .single();
+      
+      console.log("data :", data);
 
       if (!error && data?.schoollogo) {
         setLogoUrl(data.schoollogo);
@@ -90,29 +92,40 @@ const ClassCard = ({
   const handleDownloadPDF = () => {
     const element = document.getElementById('card-to-print');
 
+    // Ensure the element is fully visible before capturing
+    const customMargin = [0.4, 0.4, 0.3, 0.4]; // [top, left, bottom, right]
+
     const opt = {
-      margin: [0.5, 0.5, 0.5, 0.5],
+      margin: customMargin,
       filename: `${schoolName}_results.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg', quality: 1 },
       html2canvas: {
-        scale: 2,
+        scale: 3,              // Higher = sharper image
         useCORS: true,
+        allowTaint: true,
         scrollY: 0,
+        logging: false,
         windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
+        windowHeight: element.scrollHeight
       },
       jsPDF: {
         unit: 'in',
         format: 'a4',
-        orientation: 'portrait',
+        orientation: 'landscape',
       },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+      pagebreak: {
+        mode: ['css', 'legacy'],
+        avoid: ['tr', '.avoid-page-break', '.card-header', '.table thead'],
+      },
     };
 
     html2pdf().set(opt).from(element).save();
   };
 
+
   if (!students || students.length === 0) return <p>No data available for this selection.</p>;
+
+  console.log("Students Data :", students);
 
   return (
     <div className="container mt-4">
@@ -203,7 +216,6 @@ const ClassCard = ({
                 {students.map((exam, index) => (
                   <tr key={index}>
                     {tableKeys.map((key, idx) => {
-                      const isSubject = ["physics", "chemistry", "maths", "biology"].includes(key);
                       const value = exam[key];
                       return (
                         <td
@@ -216,19 +228,19 @@ const ClassCard = ({
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
-                            color: isSubject && (value === null || value === undefined) ? "red" : undefined,
+                            textTransform: "uppercase",
+                            color: value === null || value === undefined ? "red" : undefined,
                           }}
                           title={value}
                         >
-                          {value !== null && value !== undefined
-                            ? value
-                            : isSubject ? "Absent" : "A"}
+                          {value !== null && value !== undefined ? value : "AB"}
                         </td>
                       );
                     })}
                   </tr>
                 ))}
               </tbody>
+
             </table>
           </div>
 

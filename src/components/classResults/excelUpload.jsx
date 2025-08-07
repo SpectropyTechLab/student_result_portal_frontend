@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { supabase } from '../../supabaseClient';
+// import { supabase } from '../../supabaseClient';
 import School from './SchoolName';
 import ClassCard from './ClassCard';
 import AcademicYearInput from './AcademicYearInput';
@@ -14,58 +14,32 @@ const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 function ExcelUpload() {
   const [file, setFile] = useState(null);
   const [selectedSchool, setSelectedSchool] = useState('');
-  const [response, setResponse] = useState(null);
-  // const [records, setRecords] = useState([]);
   const [schoolId, setSchoolId] = useState(null);
+  const [response, setResponse] = useState(null);
   const [academicYear, setAcademicYear] = useState('');
   const [program, setProgram] = useState('');
   const [examName, setExamName] = useState('');
   const [examFormat, setExamFormat] = useState('');
   const [classValue, setClassValue] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  // 🔍 Fetch schoolId when schoolName changes
+  // 🧠 Auto-fill default exam name when program changes
   useEffect(() => {
-    const fetchSchoolId = async () => {
-      if (!selectedSchool) return;
-
-      try {
-        const { data, error } = await supabase
-          .from('schooldata')
-          .select('id')
-          .eq('name', selectedSchool)
-          .single();
-
-        if (error) throw error;
-
-        setSchoolId(data.id);
-        console.log("School ID:", data.id);
-      } catch (err) {
-        console.error('Error fetching school ID:', err.message);
-        setSchoolId(null);
-      }
+    const examDefaults = {
+      CATALYST: 'CATALYST_WT_1',
+      MAESTRO: 'MAESTRO_WT_1',
+      PIONEER: 'PIONEER_WT_1',
+      SR_PIONEER: 'SR_PIONEER_WT_1',
+      FF: 'FF_WT_1',
+      NGHS: 'NGHS_WT_1',
     };
 
-    fetchSchoolId();
-  }, [selectedSchool]);
+    if (program && examDefaults[program]) {
+      setExamName(examDefaults[program]);
+    }
+  }, [program]);
 
-  // 📥 Fetch results after upload
-  // const fetchResultsFromSupabase = async (school_id) => {
-  //   try {
-  //     const { data, error } = await supabase
-  //       .from('results')
-  //       .select('*')
-  //       .eq('school_id', school_id)
-  //       .order('rank', { ascending: true });
-
-  //     if (error) throw error;
-  //     setRecords(data || []);
-  //   } catch (err) {
-  //     console.error('Supabase fetch error:', err.message);
-  //     setRecords([]);
-  //   }
-  // };
-
-  // 📤 Handle Upload
+  // ✅ Form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -75,8 +49,7 @@ function ExcelUpload() {
 
     const formData = new FormData();
     formData.append('excel', file);
-    formData.append('schoolName', selectedSchool);
-    formData.append('schoolId', schoolId);
+    formData.append('schoolId', schoolId); // ✅ Only ID used now
     formData.append('academicYear', academicYear);
     formData.append('program', program);
     formData.append('examName', examName);
@@ -90,16 +63,16 @@ function ExcelUpload() {
 
       console.log('Upload response:', res.data);
       setResponse(res.data);
-      // setRecords(res.data.students || []);
-
-      // ✅ Fetch stored results from Supabase after upload
-      // fetchResultsFromSupabase(schoolId);
+      setUploadSuccess(res.data.status === 'Success');
     } catch (error) {
       console.error('Upload error:', error);
       setResponse({ error: error.response?.data?.error || 'Upload failed' });
-      // setRecords([]);
+      setUploadSuccess(false);
     }
   };
+
+  // 🔒 Form validation
+  const isFormValid = file && selectedSchool && schoolId && academicYear && program && examName && examFormat && classValue;
 
   return (
     <div className="container py-5">
@@ -120,7 +93,7 @@ function ExcelUpload() {
 
             {/* 📝 Exam Name */}
             <div className="mb-3">
-              <ExamNameInput examName={examName} setExamName={setExamName} />
+              <ExamNameInput program={program} examName={examName} setExamName={setExamName} />
             </div>
 
             {/* 📚 Exam Format */}
@@ -129,10 +102,14 @@ function ExcelUpload() {
             </div>
 
             {/* 🏫 School Selector */}
-            <School selectedSchool={selectedSchool} setSelectedSchool={setSelectedSchool} />
+            <div className="mb-3">
+              <School selectedSchool={selectedSchool} setSelectedSchool={setSelectedSchool} setSchoolId={setSchoolId} />
+            </div>
 
             {/* 📘 Class Selector */}
-            <ClassInput classValue={classValue} setClassValue={setClassValue} />
+            <div className="mb-3">
+              <ClassInput classValue={classValue} setClassValue={setClassValue} />
+            </div>
 
             {/* 📄 File Upload */}
             <div className="mb-3">
@@ -145,7 +122,7 @@ function ExcelUpload() {
               />
             </div>
 
-            <button type="submit" className="btn btn-primary w-100">
+            <button type="submit" className="btn btn-primary w-100" disabled={!isFormValid}>
               Upload Results
             </button>
           </form>
@@ -160,7 +137,8 @@ function ExcelUpload() {
         </div>
       </div>
 
-      {/* 📊 Results Display */}
+      {/* 📊 Class Results Viewer */}
+      {/* {uploadSuccess && ( */}
         <ClassCard
           schoolName={selectedSchool}
           schoolId={schoolId}
@@ -170,6 +148,7 @@ function ExcelUpload() {
           examFormat={examFormat}
           classValue={classValue}
         />
+      {/* )} */}
     </div>
   );
 }
