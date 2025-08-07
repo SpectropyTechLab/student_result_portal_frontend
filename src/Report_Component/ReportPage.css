@@ -1,0 +1,25 @@
+/* Print styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .report-card-print,
+    .report-card-print * {
+        visibility: visible;
+    }
+
+    .report-card-print {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 1rem;
+    }
+}
+
+/* Normal display styling for the report card if needed */
+.report-card-print .card {
+    max-width: 700px;
+    margin: 0 auto;
+}

@@ -1,0 +1,24 @@
+#card-to-print {
+  width: fit-content;
+  max-width: 100%;
+}
+
+#card-to-print table,
+#card-to-print tr,
+#card-to-print td,
+#card-to-print th {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+@media print {
+  #card-to-print {
+    zoom: 85%;
+    page-break-inside: avoid;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
