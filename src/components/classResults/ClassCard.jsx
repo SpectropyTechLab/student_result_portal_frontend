@@ -249,7 +249,7 @@ const ClassCard = ({
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            textTransform: key === 'name' ? 'none' : 'uppercase'
+                            textTransform: key === 'name' ? 'uppercase' : 'none'
                           }}
                           title={String(display)}
                         >

@@ -1,10 +1,23 @@
-const ReportCard = ({ students, schoolName, schoolArea = '', schoolLogoUrl = '' }) => {
+import React, { useMemo } from "react";
+
+const gradeBadgeClass = (g) => {
+  if (!g) return "bg-secondary";
+  const G = String(g).toUpperCase();
+  if (["A+", "A"].includes(G)) return "bg-success";
+  if (["B+", "B"].includes(G)) return "bg-primary";
+  if (["C+", "C"].includes(G)) return "bg-warning text-dark";
+  return "bg-danger";
+};
+
+const rankBadge = (r) => (r === 1 ? "🥇" : r === 2 ? "🥈" : r === 3 ? "🥉" : "🏷️");
+const fmtPct = (v) => (v == null || v === "" ? "—" : `${Number(v).toFixed(2)}%`);
+const cell = (v) => (v == null ? "—" : v);
+
+const ReportCard = ({ students, schoolName, schoolArea = "", schoolLogoUrl = "" }) => {
   if (!students || students.length === 0) return <p>No data available.</p>;
 
-  // Pull student info from the first record
   const { name, roll_no } = students[0] || {};
 
-  // Columns to show (same as before)
   const tableKeys = [
     "exam",
     "physics",
@@ -14,65 +27,94 @@ const ReportCard = ({ students, schoolName, schoolArea = '', schoolLogoUrl = '' 
     "total_marks",
     "grade",
     "rank",
-    "percentage"
+    "percentage",
   ];
+
+  const { avgPct, bestPct, bestExam } = useMemo(() => {
+    const valid = students.filter((s) => s.percentage != null);
+    const avg =
+      valid.reduce((a, b) => a + Number(b.percentage || 0), 0) / (valid.length || 1);
+    const best = valid.reduce(
+      (acc, cur) =>
+        Number(cur.percentage) > acc.bestPct
+          ? { bestPct: Number(cur.percentage), bestExam: cur.exam }
+          : acc,
+      { bestPct: -Infinity, bestExam: null }
+    );
+    return {
+      avgPct: isFinite(avg) ? avg : 0,
+      bestPct: isFinite(best.bestPct) ? best.bestPct : null,
+      bestExam: best.bestExam,
+    };
+  }, [students]);
 
   return (
     <div className="container mt-4">
-      <div className="card shadow border-0 mb-5">
-        <div className="card-body">
-          {/* Header with school logo + name */}
-          <div className="d-flex align-items-center justify-content-between mb-4">
+      <div className="card shadow-sm border-0 mb-5">
+        {/* Card header — simple, App-like */}
+        <div className="card-header bg-white border-bottom-0">
+          <div className="d-flex align-items-center justify-content-between">
             <div className="d-flex align-items-center gap-3">
               {schoolLogoUrl ? (
                 <img
                   src={schoolLogoUrl}
                   alt={`${schoolName} logo`}
-                  style={{ width: 64, height: 64, objectFit: "contain" }}
+                  style={{ width: 64, height: 64, objectFit: "contain", borderRadius: 8 }}
                 />
               ) : (
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    background: "#eef2f7",
-                    borderRadius: 8
-                  }}
-                />
+                <div style={{ width: 64, height: 64, background: "#f3f4f6", borderRadius: 8 }} />
               )}
               <div>
-                <h2 className="card-title text-primary mb-0">{schoolName}</h2>
-                {schoolArea && (
-                  <small className="text-muted">Area: {schoolArea}</small>
-                )}
+                <h2 className="h5 mb-0 fw-bold">{schoolName}</h2>
+                {schoolArea && <small className="text-muted">Area: {schoolArea}</small>}
               </div>
             </div>
-            <div className="text-end">
-              <div className="fw-semibold">Report Card</div>
-              <small className="text-muted">
-                Showing {students.length} result{students.length > 1 ? "s" : ""}
-              </small>
+
+            {/* Compact stats */}
+            <div className="d-flex gap-2 flex-wrap">
+              <span className="badge bg-light text-dark border">Avg: {fmtPct(avgPct)}</span>
+              <span className="badge bg-light text-dark border">
+                Best: {bestPct != null ? fmtPct(bestPct) : "—"}
+                {bestExam ? <span className="ms-1 text-muted">({bestExam})</span> : null}
+              </span>
+              <span className="badge bg-light text-dark border">Records: {students.length}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="card-body">
+          {/* Student info row */}
+          <div className="row g-3 mb-3">
+            <div className="col-md-4">
+              <div className="p-3 rounded border bg-white">
+                <div className="text-muted small">Student</div>
+                <div className="fw-semibold">{name || "—"}</div>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className="p-3 rounded border bg-white">
+                <div className="text-muted small">Roll No</div>
+                <div className="fw-semibold">{roll_no ?? "—"}</div>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className="p-3 rounded border bg-white">
+                <div className="text-muted small">Highlight</div>
+                <div className="fw-semibold">
+                  {bestPct != null ? `Top: ${fmtPct(bestPct)}` : "—"}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Student Info */}
-          <ul className="list-group list-group-flush mb-4">
-            <li className="list-group-item">
-              <strong>Name:</strong> {name || "-"}
-            </li>
-            <li className="list-group-item">
-              <strong>Roll No:</strong> {roll_no ?? "-"}
-            </li>
-          </ul>
-
-          {/* Exam Table */}
+          {/* Table */}
           <div className="table-responsive">
-            <table className="table table-bordered text-center align-middle">
-              <thead className="table-primary">
+            <table className="table table-striped align-middle">
+              <thead className="table-light">
                 <tr>
                   {tableKeys.map((key) => (
-                    <th key={key} style={{ textTransform: "capitalize" }}>
-                      {key.replace(/_/g, " ")}
+                    <th key={key} className="text-nowrap">
+                      {key.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())}
                     </th>
                   ))}
                 </tr>
@@ -80,11 +122,41 @@ const ReportCard = ({ students, schoolName, schoolArea = '', schoolLogoUrl = '' 
               <tbody>
                 {students.map((row, idx) => (
                   <tr key={idx}>
-                    {tableKeys.map((key) => (
-                      <td key={key}>
-                        {row[key] !== null && row[key] !== undefined ? row[key] : "-"}
-                      </td>
-                    ))}
+                    {tableKeys.map((key) => {
+                      const v = row[key];
+
+                      if (key === "percentage") {
+                        return <td key={key}>{fmtPct(v)}</td>;
+                      }
+
+                      if (key === "grade") {
+                        return v ? (
+                          <td key={key}>
+                            <span className={`badge rounded-pill ${gradeBadgeClass(v)}`}>
+                              {String(v).toUpperCase()}
+                            </span>
+                          </td>
+                        ) : (
+                          <td key={key} className="text-muted">—</td>
+                        );
+                      }
+
+                      if (key === "rank") {
+                        return (
+                          <td key={key}>
+                            {v ? (
+                              <span className="fw-semibold">
+                                {rankBadge(Number(v))} {v}
+                              </span>
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
+                          </td>
+                        );
+                      }
+
+                      return <td key={key}>{cell(v)}</td>;
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -92,9 +164,10 @@ const ReportCard = ({ students, schoolName, schoolArea = '', schoolLogoUrl = '' 
           </div>
 
           {/* Footer note */}
-          <p className="mt-3 text-muted text-end">
-            Latest first
-          </p>
+          <div className="d-flex justify-content-between align-items-center mt-2">
+            <span className="text-muted small">Latest first</span>
+            <span className="text-muted small">More actions coming soon</span>
+          </div>
         </div>
       </div>
     </div>
