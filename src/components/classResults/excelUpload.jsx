@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-// import { supabase } from '../../supabaseClient';
 import School from './SchoolName';
 import ClassCard from './ClassCard';
 import AcademicYearInput from './AcademicYearInput';
@@ -23,7 +22,9 @@ function ExcelUpload() {
   const [classValue, setClassValue] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  // 🧠 Auto-fill default exam name when program changes
+  // NEW: a key to force remount (and thus re-fetch) of ClassCard after upload
+  const [resultsKey, setResultsKey] = useState(0);
+
   useEffect(() => {
     const examDefaults = {
       CATALYST: 'CATALYST_WT_1',
@@ -33,15 +34,13 @@ function ExcelUpload() {
       FF: 'FF_WT_1',
       NGHS: 'NGHS_WT_1',
     };
-
-    if (program && examDefaults[program]) {
-      setExamName(examDefaults[program]);
-    }
+    if (program && examDefaults[program]) setExamName(examDefaults[program]);
   }, [program]);
 
-  // ✅ Form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setUploadSuccess(false);
+    setResponse(null);
 
     if (!file) return alert('Please select an Excel file.');
     if (!selectedSchool) return alert('Please select or add a school.');
@@ -49,7 +48,7 @@ function ExcelUpload() {
 
     const formData = new FormData();
     formData.append('excel', file);
-    formData.append('schoolId', schoolId); // ✅ Only ID used now
+    formData.append('schoolId', schoolId);
     formData.append('academicYear', academicYear);
     formData.append('program', program);
     formData.append('examName', examName);
@@ -61,9 +60,15 @@ function ExcelUpload() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      console.log('Upload response:', res.data);
       setResponse(res.data);
-      setUploadSuccess(res.data.status === 'Success');
+
+      if (res.data?.status === 'Success') {
+        setUploadSuccess(true);
+        // Force fresh fetch by remounting ClassCard
+        setResultsKey(Date.now());
+      } else {
+        setUploadSuccess(false);
+      }
     } catch (error) {
       console.error('Upload error:', error);
       setResponse({ error: error.response?.data?.error || 'Upload failed' });
@@ -71,7 +76,6 @@ function ExcelUpload() {
     }
   };
 
-  // 🔒 Form validation
   const isFormValid = file && selectedSchool && schoolId && academicYear && program && examName && examFormat && classValue;
 
   return (
@@ -79,39 +83,26 @@ function ExcelUpload() {
       <div className="row justify-content-center">
         <div className="col-md-8">
           <h3 className="mb-4">Upload Excel File</h3>
-          <form onSubmit={handleSubmit}>
 
-            {/* 🗓 Academic Year */}
+          <form onSubmit={handleSubmit}>
             <div className="mb-3">
               <AcademicYearInput academicYear={academicYear} setAcademicYear={setAcademicYear} />
             </div>
-
-            {/* 🎯 Program */}
             <div className="mb-3">
               <ProgramInput program={program} setProgram={setProgram} />
             </div>
-
-            {/* 📝 Exam Name */}
             <div className="mb-3">
               <ExamNameInput program={program} examName={examName} setExamName={setExamName} />
             </div>
-
-            {/* 📚 Exam Format */}
             <div className="mb-3">
               <ExamFormatInput examFormat={examFormat} setExamFormat={setExamFormat} />
             </div>
-
-            {/* 🏫 School Selector */}
             <div className="mb-3">
               <School selectedSchool={selectedSchool} setSelectedSchool={setSelectedSchool} setSchoolId={setSchoolId} />
             </div>
-
-            {/* 📘 Class Selector */}
             <div className="mb-3">
               <ClassInput classValue={classValue} setClassValue={setClassValue} />
             </div>
-
-            {/* 📄 File Upload */}
             <div className="mb-3">
               <label className="form-label">Excel File</label>
               <input
@@ -127,7 +118,6 @@ function ExcelUpload() {
             </button>
           </form>
 
-          {/* ✅ Server Response */}
           {response && (
             <div className="alert alert-info mt-4" role="alert">
               <h5 className="alert-heading">Server Response</h5>
@@ -137,9 +127,10 @@ function ExcelUpload() {
         </div>
       </div>
 
-      {/* 📊 Class Results Viewer */}
-      {/* {uploadSuccess && ( */}
+      {/* Show ClassCard ONLY after success; remount via key to force fresh fetch */}
+      {uploadSuccess && (
         <ClassCard
+          key={resultsKey}
           schoolName={selectedSchool}
           schoolId={schoolId}
           academicYear={academicYear}
@@ -148,7 +139,7 @@ function ExcelUpload() {
           examFormat={examFormat}
           classValue={classValue}
         />
-      {/* )} */}
+      )}
     </div>
   );
 }

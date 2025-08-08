@@ -1,26 +1,68 @@
-const ReportCard = ({ students, schoolName }) => {
+const ReportCard = ({ students, schoolName, schoolArea = '', schoolLogoUrl = '' }) => {
   if (!students || students.length === 0) return <p>No data available.</p>;
 
-  // Extract student info from the first record
-  const { name, roll_no } = students[0];
+  // Pull student info from the first record
+  const { name, roll_no } = students[0] || {};
 
-  console.log("students data :",students);
-  console.log("School name :",schoolName);
-
-  // Define the keys to display in the table
-  const tableKeys = ["exam", "examset", "physics", "chemistry", "maths", "biology", "total_marks", "grade", "rank"];
+  // Columns to show (same as before)
+  const tableKeys = [
+    "exam",
+    "physics",
+    "chemistry",
+    "maths",
+    "biology",
+    "total_marks",
+    "grade",
+    "rank",
+    "percentage"
+  ];
 
   return (
     <div className="container mt-4">
       <div className="card shadow border-0 mb-5">
         <div className="card-body">
-          <h2 className="card-title text-center text-primary mb-3">Report Card</h2>
+          {/* Header with school logo + name */}
+          <div className="d-flex align-items-center justify-content-between mb-4">
+            <div className="d-flex align-items-center gap-3">
+              {schoolLogoUrl ? (
+                <img
+                  src={schoolLogoUrl}
+                  alt={`${schoolName} logo`}
+                  style={{ width: 64, height: 64, objectFit: "contain" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    background: "#eef2f7",
+                    borderRadius: 8
+                  }}
+                />
+              )}
+              <div>
+                <h2 className="card-title text-primary mb-0">{schoolName}</h2>
+                {schoolArea && (
+                  <small className="text-muted">Area: {schoolArea}</small>
+                )}
+              </div>
+            </div>
+            <div className="text-end">
+              <div className="fw-semibold">Report Card</div>
+              <small className="text-muted">
+                Showing {students.length} result{students.length > 1 ? "s" : ""}
+              </small>
+            </div>
+          </div>
 
-          {/* School and Student Info */}
+          {/* Student Info */}
           <ul className="list-group list-group-flush mb-4">
-            <li className="list-group-item"><strong>School:</strong> {schoolName}</li>
-            <li className="list-group-item"><strong>Name:</strong> {name}</li>
-            <li className="list-group-item"><strong>Roll No:</strong> {roll_no}</li>
+            <li className="list-group-item">
+              <strong>Name:</strong> {name || "-"}
+            </li>
+            <li className="list-group-item">
+              <strong>Roll No:</strong> {roll_no ?? "-"}
+            </li>
           </ul>
 
           {/* Exam Table */}
@@ -28,18 +70,20 @@ const ReportCard = ({ students, schoolName }) => {
             <table className="table table-bordered text-center align-middle">
               <thead className="table-primary">
                 <tr>
-                  {tableKeys.map((key, idx) => (
-                    <th key={idx} style={{ textTransform: "capitalize" }}>
+                  {tableKeys.map((key) => (
+                    <th key={key} style={{ textTransform: "capitalize" }}>
                       {key.replace(/_/g, " ")}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {students.map((exam, index) => (
-                  <tr key={index}>
-                    {tableKeys.map((key, idx) => (
-                      <td key={idx}>{exam[key] !== null && exam[key] !== undefined ? exam[key] : '-'}</td>
+                {students.map((row, idx) => (
+                  <tr key={idx}>
+                    {tableKeys.map((key) => (
+                      <td key={key}>
+                        {row[key] !== null && row[key] !== undefined ? row[key] : "-"}
+                      </td>
                     ))}
                   </tr>
                 ))}
@@ -47,9 +91,9 @@ const ReportCard = ({ students, schoolName }) => {
             </table>
           </div>
 
-          {/* Total Exams Info */}
+          {/* Footer note */}
           <p className="mt-3 text-muted text-end">
-            Showing {students.length} exam result{students.length > 1 ? 's' : ''}.
+            Latest first
           </p>
         </div>
       </div>
