@@ -60,6 +60,7 @@ function ReportPage() {
       setRecords(results);
 
       const joinedSchool = results[0]?.schooldata;
+      console.log("Joined School:", joinedSchool);
       if (joinedSchool) {
         setSchool(joinedSchool);
       } else {

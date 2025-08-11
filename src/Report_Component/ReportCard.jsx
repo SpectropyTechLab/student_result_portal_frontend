@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
+import html2pdf from "html2pdf.js";
 
 const gradeBadgeClass = (g) => {
   if (!g) return "bg-secondary";
@@ -16,6 +17,7 @@ const cell = (v) => (v == null ? "—" : v);
 const ReportCard = ({ students, schoolName, schoolArea = "", schoolLogoUrl = "" }) => {
   if (!students || students.length === 0) return <p>No data available.</p>;
 
+  const cardRef = useRef(null); // <-- capture this card
   const { name, roll_no } = students[0] || {};
 
   const tableKeys = [
@@ -48,9 +50,42 @@ const ReportCard = ({ students, schoolName, schoolArea = "", schoolLogoUrl = "" 
     };
   }, [students]);
 
+  const handleDownloadPDF = () => {
+    const el = cardRef.current;
+    if (!el) return;
+    const filenameSafe = `${(schoolName || "School")
+      .replace(/\s+/g, "_")}_${(name || "Student").replace(/\s+/g, "_")}_report.pdf`;
+
+    const opt = {
+      margin: [0.4, 0.4, 0.3, 0.4],      // top, left, bottom, right (inches)
+      filename: filenameSafe,
+      image: { type: "jpeg", quality: 1 },
+      html2canvas: {
+        scale: 3,
+        useCORS: true,       // make sure logos are served with CORS headers
+        allowTaint: true,
+        scrollY: 0,
+        logging: false,
+        windowWidth: el.scrollWidth,
+        windowHeight: el.scrollHeight,
+      },
+      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"], avoid: [".card-header", ".table thead", "tr"] },
+    };
+
+    html2pdf().set(opt).from(el).save();
+  };
+
   return (
     <div className="container mt-4">
-      <div className="card shadow-sm border-0 mb-5">
+      {/* Top-right action */}
+      <div className="d-flex justify-content-end mb-2">
+        <button className="btn btn-outline-primary btn-sm" onClick={handleDownloadPDF}>
+          Download PDF
+        </button>
+      </div>
+
+      <div className="card shadow-sm border-0 mb-5" ref={cardRef}>
         {/* Card header — simple, App-like */}
         <div className="card-header bg-white border-bottom-0">
           <div className="d-flex align-items-center justify-content-between">
@@ -125,9 +160,7 @@ const ReportCard = ({ students, schoolName, schoolArea = "", schoolLogoUrl = "" 
                     {tableKeys.map((key) => {
                       const v = row[key];
 
-                      if (key === "percentage") {
-                        return <td key={key}>{fmtPct(v)}</td>;
-                      }
+                      if (key === "percentage") return <td key={key}>{fmtPct(v)}</td>;
 
                       if (key === "grade") {
                         return v ? (
