@@ -75,7 +75,7 @@ function ExcelUpload() {
         setUploadSuccess(false);
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      // console.error('Upload error:', error);
       setResponse({ error: error.response?.data?.error || 'Upload failed' });
       setUploadSuccess(false);
     } finally {
