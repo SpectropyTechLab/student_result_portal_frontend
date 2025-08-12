@@ -1,41 +1,21 @@
 import React, { useMemo, useRef } from "react";
-import html2pdf from "html2pdf.js";
-
-const gradeBadgeClass = (g) => {
-  if (!g) return "bg-secondary";
-  const G = String(g).toUpperCase();
-  if (["A+", "A"].includes(G)) return "bg-success";
-  if (["B+", "B"].includes(G)) return "bg-primary";
-  if (["C+", "C"].includes(G)) return "bg-warning text-dark";
-  return "bg-danger";
-};
-
-const rankBadge = (r) => (r === 1 ? "🥇" : r === 2 ? "🥈" : r === 3 ? "🥉" : "🏷️");
-const fmtPct = (v) => (v == null || v === "" ? "—" : `${Number(v).toFixed(2)}%`);
-const cell = (v) => (v == null ? "—" : v);
+import SchoolHeader from './components/SchoolHeader';
+import StudentInfo from './components/StudentInfo';
+import StatsSummary from './components/StatsSummary';
+import ExamTable from './components/ExamTable';
+import PDFDownloader from './components/PDFDownloader';
+import { detectTestType, GROUP_ORDER } from './components/TestTypeDetector';
+import SignatureSection from "./components/SignatureSection";
 
 const ReportCard = ({ students, schoolName, schoolArea = "", schoolLogoUrl = "" }) => {
   if (!students || students.length === 0) return <p>No data available.</p>;
 
-  const cardRef = useRef(null); // <-- capture this card
+  const cardRef = useRef(null);
   const { name, roll_no } = students[0] || {};
-
-  const tableKeys = [
-    "exam",
-    "physics",
-    "chemistry",
-    "maths",
-    "biology",
-    "total_marks",
-    "grade",
-    "rank",
-    "percentage",
-  ];
 
   const { avgPct, bestPct, bestExam } = useMemo(() => {
     const valid = students.filter((s) => s.percentage != null);
-    const avg =
-      valid.reduce((a, b) => a + Number(b.percentage || 0), 0) / (valid.length || 1);
+    const avg = valid.reduce((a, b) => a + Number(b.percentage || 0), 0) / (valid.length || 1);
     const best = valid.reduce(
       (acc, cur) =>
         Number(cur.percentage) > acc.bestPct
@@ -50,158 +30,85 @@ const ReportCard = ({ students, schoolName, schoolArea = "", schoolLogoUrl = "" 
     };
   }, [students]);
 
-  const handleDownloadPDF = () => {
-    const el = cardRef.current;
-    if (!el) return;
-    const filenameSafe = `${(schoolName || "School")
-      .replace(/\s+/g, "_")}_${(name || "Student").replace(/\s+/g, "_")}_report.pdf`;
-
-    const opt = {
-      margin: [0.4, 0.4, 0.3, 0.4],      // top, left, bottom, right (inches)
-      filename: filenameSafe,
-      image: { type: "jpeg", quality: 1 },
-      html2canvas: {
-        scale: 3,
-        useCORS: true,       // make sure logos are served with CORS headers
-        allowTaint: true,
-        scrollY: 0,
-        logging: false,
-        windowWidth: el.scrollWidth,
-        windowHeight: el.scrollHeight,
-      },
-      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["css", "legacy"], avoid: [".card-header", ".table thead", "tr"] },
+  const calculateGroupStats = (rows) => {
+    const valid = rows.filter((r) => r.percentage != null);
+    const avg = valid.reduce((a, b) => a + Number(b.percentage || 0), 0) / (valid.length || 1);
+    const best = valid.reduce(
+      (acc, cur) =>
+        Number(cur.percentage) > acc.bestPct
+          ? { bestPct: Number(cur.percentage), bestExam: cur.exam }
+          : acc,
+      { bestPct: -Infinity, bestExam: null }
+    );
+    return {
+      avgPct: isFinite(avg) ? avg : 0,
+      bestPct: isFinite(best.bestPct) ? best.bestPct : null,
+      bestExam: best.bestExam,
     };
-
-    html2pdf().set(opt).from(el).save();
   };
+
+  const groupedData = useMemo(() => {
+    const groups = {};
+    students.forEach(row => {
+      const group = detectTestType(row.exam);
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(row);
+    });
+    return groups;
+  }, [students]);
 
   return (
     <div className="container mt-4">
-      {/* Top-right action */}
       <div className="d-flex justify-content-end mb-2">
-        <button className="btn btn-outline-primary btn-sm" onClick={handleDownloadPDF}>
-          Download PDF
-        </button>
+        <PDFDownloader
+          cardRef={cardRef}
+          schoolName={schoolName}
+          studentName={name}
+        />
       </div>
 
       <div className="card shadow-sm border-0 mb-5" ref={cardRef}>
-        {/* Card header — simple, App-like */}
-        <div className="card-header bg-white border-bottom-0">
-          <div className="d-flex align-items-center justify-content-between">
-            <div className="d-flex align-items-center gap-3">
-              {schoolLogoUrl ? (
-                <img
-                  src={schoolLogoUrl}
-                  alt={`${schoolName} logo`}
-                  style={{ width: 64, height: 64, objectFit: "contain", borderRadius: 8 }}
-                />
-              ) : (
-                <div style={{ width: 64, height: 64, background: "#f3f4f6", borderRadius: 8 }} />
-              )}
-              <div>
-                <h2 className="h5 mb-0 fw-bold">{schoolName}</h2>
-                {schoolArea && <small className="text-muted">Area: {schoolArea}</small>}
-              </div>
-            </div>
-
-            {/* Compact stats */}
-            <div className="d-flex gap-2 flex-wrap">
-              <span className="badge bg-light text-dark border">Avg: {fmtPct(avgPct)}</span>
-              <span className="badge bg-light text-dark border">
-                Best: {bestPct != null ? fmtPct(bestPct) : "—"}
-                {bestExam ? <span className="ms-1 text-muted">({bestExam})</span> : null}
-              </span>
-              <span className="badge bg-light text-dark border">Records: {students.length}</span>
-            </div>
+        <div className="d-flex justify-content-between align-items-start p-3">
+          <SchoolHeader
+            schoolName={schoolName}
+            schoolArea={schoolArea}
+            schoolLogoUrl={schoolLogoUrl}
+          />
+          <div className="text-end">
+            <StatsSummary
+              avgPct={avgPct}
+              bestPct={bestPct}
+              bestExam={bestExam}
+              recordCount={students.length}
+            />
           </div>
         </div>
 
         <div className="card-body">
-          {/* Student info row */}
-          <div className="row g-3 mb-3">
-            <div className="col-md-4">
-              <div className="p-3 rounded border bg-white">
-                <div className="text-muted small">Student</div>
-                <div className="fw-semibold">{name || "—"}</div>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="p-3 rounded border bg-white">
-                <div className="text-muted small">Roll No</div>
-                <div className="fw-semibold">{roll_no ?? "—"}</div>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="p-3 rounded border bg-white">
-                <div className="text-muted small">Highlight</div>
-                <div className="fw-semibold">
-                  {bestPct != null ? `Top: ${fmtPct(bestPct)}` : "—"}
-                </div>
-              </div>
-            </div>
-          </div>
+          <StudentInfo name={name} rollNo={roll_no} avgPct={avgPct} />
 
-          {/* Table */}
-          <div className="table-responsive">
-            <table className="table table-striped align-middle">
-              <thead className="table-light">
-                <tr>
-                  {tableKeys.map((key) => (
-                    <th key={key} className="text-nowrap">
-                      {key.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((row, idx) => (
-                  <tr key={idx}>
-                    {tableKeys.map((key) => {
-                      const v = row[key];
+          {GROUP_ORDER.map((group) => {
+            const rows = groupedData[group] || [];
+            if (!rows.length) return null;
 
-                      if (key === "percentage") return <td key={key}>{fmtPct(v)}</td>;
+            const stats = calculateGroupStats(rows);
 
-                      if (key === "grade") {
-                        return v ? (
-                          <td key={key}>
-                            <span className={`badge rounded-pill ${gradeBadgeClass(v)}`}>
-                              {String(v).toUpperCase()}
-                            </span>
-                          </td>
-                        ) : (
-                          <td key={key} className="text-muted">—</td>
-                        );
-                      }
+            return (
+              <ExamTable
+                key={group}
+                group={group}
+                rows={rows}
+                stats={stats}
+              />
+            );
+          })}
 
-                      if (key === "rank") {
-                        return (
-                          <td key={key}>
-                            {v ? (
-                              <span className="fw-semibold">
-                                {rankBadge(Number(v))} {v}
-                              </span>
-                            ) : (
-                              <span className="text-muted">—</span>
-                            )}
-                          </td>
-                        );
-                      }
-
-                      return <td key={key}>{cell(v)}</td>;
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Footer note */}
-          <div className="d-flex justify-content-between align-items-center mt-2">
+          {/* <div className="d-flex justify-content-between align-items-center mt-2">
             <span className="text-muted small">Latest first</span>
             <span className="text-muted small">More actions coming soon</span>
-          </div>
+          </div> */}
         </div>
+        < SignatureSection/>
       </div>
     </div>
   );
