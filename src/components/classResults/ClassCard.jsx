@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import html2pdf from 'html2pdf.js';
 import { supabase } from '../../supabaseClient';
+import SubjectBucketsCard from './SubjectPerformance'
+import SubjectAverageCard from './SubjectAverageCard';
 
 const ClassCard = ({
   schoolName,
@@ -266,6 +268,13 @@ const ClassCard = ({
           <p className="mt-3 text-muted text-end">
             Showing {students.length} result{students.length > 1 ? 's' : ''}.
           </p>
+        </div>
+
+        <div className="mt-3">
+          <SubjectBucketsCard schoolId={schoolId} classValue={classValue} examName={examName} />
+        </div>
+        <div className="mt-3">
+          <SubjectAverageCard schoolId={schoolId} classValue={classValue} examName={examName} />
         </div>
       </div>
     </div>
